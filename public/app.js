@@ -62,7 +62,6 @@ const state = {
   tryon: null,                                // garments in the open try-on
   seen: new Map(),                            // items from AI results outside the current profile
   ai: false,
-  pollTimer: null,
 };
 const byId = (id) => state.items.find((i) => i.id === id) ?? state.seen.get(id);
 const saveLook = () => { store.save('look', [...state.look]); updateLookCount(); };
@@ -99,7 +98,6 @@ const ERRORS = {
   error_nsfw_content_detected: "The photo couldn't be processed. Try another.",
   garment_image_missing: "One of these pieces doesn't have a product photo yet.",
   invalid_photo: 'Please add a JPG or PNG photo first.',
-  unknown_job: 'This try-on expired. Please try again.',
   CreditInsufficiency: 'The try-on service is out of credits.',
   InvalidAccessToken: 'The try-on service key is invalid.',
   timeout: 'This is taking longer than usual. Please try again.',
@@ -574,7 +572,8 @@ function buildNav() {
 
 // ---------- Profile sheet ----------
 const profileDlg = $('#profile');
-const MIN_W = 512, MIN_H = 384, MAX_SIDE = 2048;
+// Photos are resized to stay well under the 4.5 MB request limit on Vercel.
+const MIN_W = 512, MIN_H = 384, MAX_SIDE = 1600;
 let draftPhoto = null;
 
 function openProfile() {
@@ -609,7 +608,7 @@ function loadPhoto(file) {
       const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
       const canvas = el('canvas', { width: Math.round(w * scale), height: Math.round(h * scale) });
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.88));
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
     };
     img.onerror = () => reject(new Error('invalid_photo'));
     img.src = URL.createObjectURL(file);
@@ -679,41 +678,66 @@ function openTryOn(garments) {
   runTryOn();
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Dresses one piece at a time; each result becomes the photo for the next piece.
 async function runTryOn() {
   const garments = state.tryon;
-  clearTimeout(state.pollTimer);
+  const run = (state.tryonRun = (state.tryonRun || 0) + 1);
+  const alive = () => state.tryonRun === run && state.tryon === garments && tryDlg.open;
   $('#retry').hidden = true;
   mount($('#after-wrap'), el('div', { class: 'spinner', 'aria-hidden': 'true' }));
   setStatus(garments.length > 1
     ? `Dressing you one piece at a time. About ${20 * garments.length} seconds.`
     : 'Dressing you. This takes about 20 seconds.');
 
+  const names = Object.fromEntries(garments.map((g) => [g.id, g.name]));
+  const label = { pending: 'waiting', running: 'dressing…', done: 'done', error: 'failed' };
+  let steps = [];
+  const paintSteps = () => {
+    $('#tryon-steps').hidden = steps.length < 2;
+    mount($('#tryon-steps'), steps.map((s) => {
+      const li = el('li', {}, `${names[s.id]}: ${label[s.state]}`);
+      li.dataset.state = s.state;
+      return li;
+    }));
+  };
+
+  let lastUrl = null;
   try {
-    const { jobId } = await api('/api/outfit', { photo: state.photo, garmentIds: garments.map((g) => g.id) });
-    let shown = null;
-    const label = { pending: 'waiting', running: 'dressing…', done: 'done', error: 'failed' };
-    const poll = async () => {
-      if (state.tryon !== garments || !tryDlg.open) return;
-      try {
-        const job = await api(`/api/outfit/${encodeURIComponent(jobId)}`);
-        $('#tryon-steps').hidden = job.steps.length < 2;
-        mount($('#tryon-steps'), ...job.steps.map((s) => {
-          const li = el('li', {}, `${s.name}: ${label[s.state]}`);
-          li.dataset.state = s.state;
-          return li;
-        }));
-        if (job.url && job.url !== shown) {
-          shown = job.url;
-          const done = job.steps.filter((s) => s.state === 'done').map((s) => s.name);
-          mount($('#after-wrap'), el('img', { src: job.url, alt: `You wearing the ${done.join(' and ')}` }));
-        }
-        if (job.state === 'done') return setStatus(garments.length > 1 ? 'Here is your full look.' : 'Here you are. Tap Buy if it works for you.');
-        if (job.state === 'error') return showError(job.code, Boolean(job.url));
-        state.pollTimer = setTimeout(poll, 2000);
-      } catch (ex) { showError(ex.code); }
-    };
-    poll();
-  } catch (ex) { showError(ex.code); }
+    const { fileId, order } = await api('/api/tryon/start', { photo: state.photo, garmentIds: garments.map((g) => g.id) });
+    steps = order.map((id) => ({ id, state: 'pending' }));
+    paintSteps();
+
+    for (const step of steps) {
+      if (!alive()) return;
+      step.state = 'running';
+      paintSteps();
+      const { taskId } = await api('/api/tryon/step', lastUrl ? { garmentId: step.id, srcUrl: lastUrl } : { garmentId: step.id, srcFileId: fileId });
+      const started = Date.now();
+      let result;
+      for (;;) {
+        await sleep(2000);
+        if (!alive()) return;
+        result = await api(`/api/tryon/${encodeURIComponent(taskId)}`);
+        if (result.state !== 'running') break;
+        if (Date.now() - started > 120_000) { result = { state: 'error', code: 'timeout' }; break; }
+      }
+      if (result.state !== 'done') {
+        step.state = 'error';
+        paintSteps();
+        return showError(result.code, Boolean(lastUrl));
+      }
+      step.state = 'done';
+      lastUrl = result.url;
+      paintSteps();
+      const done = steps.filter((s) => s.state === 'done').map((s) => names[s.id]);
+      mount($('#after-wrap'), el('img', { src: lastUrl, alt: `You wearing the ${done.join(' and ')}` }));
+    }
+    setStatus(garments.length > 1 ? 'Here is your full look.' : 'Here you are. Tap Buy if it works for you.');
+  } catch (ex) {
+    if (alive()) showError(ex.code, Boolean(lastUrl));
+  }
 }
 
 function showError(code, keepImage = false) {
@@ -724,7 +748,7 @@ function showError(code, keepImage = false) {
 
 $('#retry').addEventListener('click', runTryOn);
 $('#tryon-photo').addEventListener('click', () => { tryDlg.close(); openProfile(); });
-tryDlg.addEventListener('close', () => clearTimeout(state.pollTimer));
+tryDlg.addEventListener('close', () => { state.tryonRun = (state.tryonRun || 0) + 1; });
 for (const b of document.querySelectorAll('[data-close]')) {
   b.append(icon('close'));
   b.addEventListener('click', () => b.closest('dialog').close());

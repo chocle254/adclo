@@ -1,17 +1,17 @@
 import express from 'express';
-import { readFile, access } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import catalog from './data/catalog.json' with { type: 'json' };
 import { createYouCamClient, createMockClient, YouCamError } from './lib/youcam.js';
 import { rankGarments, NEEDS, FEATURE_TEXT } from './lib/match.js';
-import { orderOutfit, startOutfitJob } from './lib/outfit.js';
+import { orderOutfit } from './lib/outfit.js';
 import { CATEGORIES, OCCASIONS, suggestFor, styleMe } from './lib/stylist.js';
 import { createGroqClient, GroqError } from './lib/groq.js';
 import { runStylist } from './lib/agent.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const garmentDir = path.join(root, 'data', 'garments');
-const catalog = JSON.parse(await readFile(path.join(root, 'data', 'catalog.json'), 'utf8'));
+const publicDir = path.join(root, 'public');
 
 const ai = process.env.GROQ_API_KEY
   ? createGroqClient({ apiKey: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL || undefined })
@@ -22,46 +22,30 @@ const client = apiKey
   ? createYouCamClient({ apiKey, baseUrl: process.env.YOUCAM_BASE_URL })
   : createMockClient();
 
-// Uploaded garment file ids, reused so each garment is only uploaded once.
-const refCache = new Map();
+// Where product photos can be fetched from the internet. On Vercel this is the production domain,
+// so YouCam downloads garments by URL. Locally there is none, so garments are uploaded instead.
+const publicBase = process.env.PUBLIC_BASE_URL
+  || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : null);
 
+// Uploaded garment file ids, reused while this server instance is alive.
+const refCache = new Map();
 const MIME = { '.jpg': 'image/jpg', '.jpeg': 'image/jpg', '.png': 'image/png' };
 
-async function hasImage(item) {
-  try {
-    await access(path.join(garmentDir, item.image));
-    return true;
-  } catch {
-    return false;
+async function garmentRef(item) {
+  if (publicBase && client.mode === 'live') return { refFileUrl: `${publicBase}/garments/${item.image}` };
+  if (!refCache.has(item.id)) {
+    const buffer = await readFile(path.join(publicDir, 'garments', item.image));
+    const contentType = MIME[path.extname(item.image).toLowerCase()] || 'image/jpg';
+    refCache.set(item.id, await client.uploadImage(buffer, contentType, item.image));
   }
+  return { refFileId: refCache.get(item.id) };
 }
 
 function parseDataUrl(dataUrl) {
   const m = /^data:image\/(jpeg|jpg|png);base64,(.+)$/.exec(dataUrl || '');
   if (!m) return null;
-  const buffer = Buffer.from(m[2], 'base64');
-  return { buffer, contentType: m[1] === 'png' ? 'image/png' : 'image/jpg' };
+  return { buffer: Buffer.from(m[2], 'base64'), contentType: m[1] === 'png' ? 'image/png' : 'image/jpg' };
 }
-
-async function garmentFileId(item) {
-  if (refCache.has(item.id)) return refCache.get(item.id);
-  const buffer = await readFile(path.join(garmentDir, item.image));
-  const contentType = MIME[path.extname(item.image).toLowerCase()] || 'image/jpg';
-  const id = await client.uploadImage(buffer, contentType, item.image);
-  refCache.set(item.id, id);
-  return id;
-}
-
-const app = express();
-app.use(express.json({ limit: '15mb' }));
-app.use(express.static(path.join(root, 'public')));
-app.use('/garments', express.static(garmentDir));
-
-app.get('/api/health', (_req, res) => res.json({ ok: true, mode: client.mode, ai: Boolean(ai) }));
-
-// Product photos don't change while the server runs, so check them once.
-const withImage = new Set();
-for (const item of catalog) if (await hasImage(item)) withImage.add(item.id);
 
 // Reads the shopper's profile from the query string or JSON body.
 function profileFrom(src = {}) {
@@ -71,16 +55,20 @@ function profileFrom(src = {}) {
   return { needs, forWho };
 }
 
-// Ranks the catalog for this shopper, keeping only what they shop for and what has a photo.
+// Ranks the catalog for this shopper, keeping only what they shop for.
 function rankedFor({ needs, forWho }) {
-  const pool = catalog.filter(
-    (i) => withImage.has(i.id) && (forWho === 'all' || i.for === forWho || i.for === 'unisex'),
-  );
+  const pool = catalog.filter((i) => forWho === 'all' || i.for === forWho || i.for === 'unisex');
   return rankGarments(pool, needs).map((item) => ({
     ...item,
     featureText: item.features.map((f) => FEATURE_TEXT[f] || f),
   }));
 }
+
+const app = express();
+app.use(express.json({ limit: '4mb' }));
+app.use(express.static(publicDir)); // Vercel serves public/ from its CDN; this is for local runs.
+
+app.get('/api/health', (_req, res) => res.json({ ok: true, mode: client.mode, ai: Boolean(ai) }));
 
 app.get('/api/meta', (_req, res) => {
   res.json({
@@ -124,7 +112,7 @@ app.post('/api/stylist', async (req, res) => {
 });
 
 // Voice input: a short recording -> text, so people can ask without typing.
-app.post('/api/transcribe', express.raw({ type: 'audio/*', limit: '8mb' }), async (req, res) => {
+app.post('/api/transcribe', express.raw({ type: 'audio/*', limit: '4mb' }), async (req, res) => {
   if (!ai) return res.status(503).json({ error: 'ai_unavailable' });
   if (!req.body?.length) return res.status(400).json({ error: 'empty_audio' });
   try {
@@ -134,52 +122,59 @@ app.post('/api/transcribe', express.raw({ type: 'audio/*', limit: '8mb' }), asyn
   }
 });
 
-// Outfit jobs run in the background; the page polls for progress.
-const jobs = new Map();
-const JOB_TTL_MS = 60 * 60 * 1000;
-let jobSeq = 0;
+// ---- Try-on ----
+// Stateless, so it works on serverless hosts. The page drives the steps:
+//   1. POST /api/tryon/start  -> uploads the photo, returns its file id and the dressing order
+//   2. POST /api/tryon/step   -> dresses one piece on a photo (the original or the last result)
+//   3. GET  /api/tryon/:task  -> checks whether that step is done
 
-app.post('/api/outfit', async (req, res) => {
-  const ids = Array.isArray(req.body?.garmentIds) ? req.body.garmentIds : [];
-  const picked = ids.map((id) => catalog.find((g) => g.id === id));
+const byId = (id) => catalog.find((g) => g.id === id);
+
+app.post('/api/tryon/start', async (req, res) => {
+  const ids = Array.isArray(req.body?.garmentIds) ? req.body.garmentIds.slice(0, 5) : [];
+  const picked = ids.map(byId);
   if (!picked.length || picked.includes(undefined)) return res.status(400).json({ error: 'unknown_garment' });
-  for (const g of picked) {
-    if (!withImage.has(g.id)) return res.status(400).json({ error: 'garment_image_missing' });
-  }
 
   const photo = parseDataUrl(req.body?.photo);
   if (!photo) return res.status(400).json({ error: 'invalid_photo' });
   if (photo.buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: 'exceed_max_filesize' });
 
   try {
-    const srcFileId = await client.uploadImage(photo.buffer, photo.contentType, 'me.jpg');
-    const garments = orderOutfit(picked);
-    const job = startOutfitJob(client, {
-      srcFileId,
-      garments,
-      refIdFor: async (g) => {
-        try {
-          return await garmentFileId(g);
-        } catch (err) {
-          refCache.delete(g.id); // the cached id may have expired
-          throw err;
-        }
-      },
-    });
-    const id = `job-${Date.now().toString(36)}-${++jobSeq}`;
-    jobs.set(id, job);
-    job.done.finally(() => setTimeout(() => jobs.delete(id), JOB_TTL_MS).unref());
-    res.json({ jobId: id, order: garments.map((g) => g.id) });
+    const fileId = await client.uploadImage(photo.buffer, photo.contentType, 'me.jpg');
+    res.json({ fileId, order: orderOutfit(picked).map((g) => g.id) });
   } catch (err) {
     sendError(res, err);
   }
 });
 
-app.get('/api/outfit/:jobId', (req, res) => {
-  const job = jobs.get(req.params.jobId);
-  if (!job) return res.status(404).json({ error: 'unknown_job' });
-  const { state, code, url, steps } = job;
-  res.json({ state, code, url, steps });
+app.post('/api/tryon/step', async (req, res) => {
+  const item = byId(req.body?.garmentId);
+  if (!item) return res.status(400).json({ error: 'unknown_garment' });
+
+  const { srcFileId, srcUrl } = req.body ?? {};
+  const okUrl = typeof srcUrl === 'string'
+    && (srcUrl.startsWith('https://') || (client.mode === 'mock' && srcUrl.startsWith('data:image/')));
+  if (!srcFileId && !okUrl) return res.status(400).json({ error: 'invalid_photo' });
+
+  try {
+    const taskId = await client.startTryOn({
+      ...(okUrl ? { srcFileUrl: srcUrl } : { srcFileId: String(srcFileId) }),
+      ...(await garmentRef(item)),
+      category: item.category,
+    });
+    res.json({ taskId });
+  } catch (err) {
+    refCache.delete(item.id); // an uploaded garment id may have expired
+    sendError(res, err);
+  }
+});
+
+app.get('/api/tryon/:taskId', async (req, res) => {
+  try {
+    res.json(await client.getTryOn(req.params.taskId));
+  } catch (err) {
+    sendError(res, err);
+  }
 });
 
 function sendError(res, err) {
@@ -196,9 +191,14 @@ function sendError(res, err) {
   res.status(500).json({ error: 'server_error' });
 }
 
-const port = Number(process.env.PORT) || 3000;
-app.listen(port, () => {
-  console.log(`AdClo running at http://localhost:${port} (${client.mode} mode)`);
-  if (client.mode === 'mock') console.log('No YOUCAM_API_KEY set: try-on returns your own photo.');
-  console.log(ai ? `AI stylist on (${ai.model})` : 'No GROQ_API_KEY set: Style me uses rules only.');
-});
+// Vercel imports the app and handles requests itself; locally we start a server.
+if (!process.env.VERCEL) {
+  const port = Number(process.env.PORT) || 3000;
+  app.listen(port, () => {
+    console.log(`AdClo running at http://localhost:${port} (${client.mode} mode)`);
+    if (client.mode === 'mock') console.log('No YOUCAM_API_KEY set: try-on returns your own photo.');
+    console.log(ai ? `AI stylist on (${ai.model})` : 'No GROQ_API_KEY set: Style me uses rules only.');
+  });
+}
+
+export default app;

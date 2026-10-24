@@ -106,3 +106,13 @@ test('a dropped connection is retried once, then reported plainly', async () => 
   const c2 = createYouCamClient({ apiKey: 'k', baseUrl: 'https://api.test', fetchImpl: dead, retryDelayMs: 0 });
   await assert.rejects(c2.startTryOn({ srcFileId: 'S', refFileId: 'R', category: 'upper_body' }), (e) => e.code === 'network_error');
 });
+
+test('a garment can be passed by public URL', async () => {
+  let sent;
+  const fetchImpl = fakeFetch({
+    'POST /s2s/v2.0/task/cloth-v4': (opts) => { sent = JSON.parse(opts.body); return [200, { data: { task_id: 'T3' } }]; },
+  });
+  const client = createYouCamClient({ apiKey: 'k', baseUrl: 'https://api.test', fetchImpl });
+  await client.startTryOn({ srcFileId: 'S', refFileUrl: 'https://adclo.app/garments/a.jpg', category: 'outer' });
+  assert.deepEqual(sent, { src_file_id: 'S', ref_file_url: 'https://adclo.app/garments/a.jpg', garment_category: 'outer' });
+});

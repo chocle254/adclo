@@ -69,7 +69,7 @@ hidden and quick style still works.
 
 ### Garment images
 
-Put product photos in `data/garments/` using the file names in `data/catalog.json`. Use front-facing
+Put product photos in `public/garments/` using the file names in `data/catalog.json`. Use front-facing
 shots of a single garment. Trousers work best as photos of the garment being worn. Items without a
 photo still appear in results, but their try-on button is disabled.
 
