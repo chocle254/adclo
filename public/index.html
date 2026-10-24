@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AdClo</title>
+  <meta name="description" content="Adaptive clothing that works the way you do. Shop, try it on, and build a full look.">
+  <meta name="theme-color" content="#faf8f5" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121113" media="(prefers-color-scheme: dark)">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#view">Skip to content</a>
+
+  <header class="top">
+    <div class="top-inner">
+      <a href="#/" class="logo" aria-label="AdClo home">Ad<span>Clo</span></a>
+      <div class="top-actions">
+        <span id="mode" class="mode" hidden></span>
+        <button type="button" class="icon-btn" id="theme-btn" aria-label="Switch to dark mode"></button>
+        <button type="button" class="icon-btn" id="profile-btn" aria-label="Your profile"></button>
+        <a href="#/look" class="icon-btn look-btn" id="look-btn" aria-label="Your look, 0 items">
+          <span class="badge" id="look-count" hidden>0</span>
+        </a>
+      </div>
+    </div>
+    <nav class="cats" aria-label="Shop by category">
+      <div class="cats-inner" id="cat-nav"></div>
+    </nav>
+  </header>
+
+  <main id="view" tabindex="-1"></main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Profile -->
+  <dialog id="profile" class="sheet" aria-labelledby="profile-title">
+    <form method="dialog" id="profile-form">
+      <div class="sheet-head">
+        <h2 id="profile-title">Your fit profile</h2>
+        <button type="button" class="icon-btn close-btn" data-close aria-label="Close"></button>
+      </div>
+      <p class="muted">Takes 30 seconds. We use it to rank every piece and to show clothes on you.</p>
+
+      <fieldset class="group">
+        <legend>What makes clothes hard for you?</legend>
+        <div id="profile-needs" class="need-grid"></div>
+      </fieldset>
+
+      <fieldset class="group">
+        <legend>Shopping for</legend>
+        <div class="seg" id="profile-for">
+          <label><input type="radio" name="for" value="womens"><span>Women's</span></label>
+          <label><input type="radio" name="for" value="mens"><span>Men's</span></label>
+          <label><input type="radio" name="for" value="all"><span>Everything</span></label>
+        </div>
+      </fieldset>
+
+      <div class="group two">
+        <label class="field">Usual size
+          <select name="size"><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select>
+        </label>
+        <label class="field">Shoe size (EU)
+          <select name="shoe"><option>36</option><option>37</option><option>38</option><option>39</option><option>40</option><option>41</option><option>42</option><option>43</option><option>44</option><option>45</option></select>
+        </label>
+      </div>
+
+      <fieldset class="group">
+        <legend>A photo of you</legend>
+        <p class="muted small">Chest up or full body, facing the camera, good light, only you in the picture. Sitting in your chair is perfect.</p>
+        <div class="photo-row">
+          <img id="profile-photo" alt="Your photo" hidden>
+          <label class="btn ghost" for="photo-input"><span id="photo-label">Choose or take a photo</span></label>
+          <input id="photo-input" type="file" accept="image/jpeg,image/png" capture="user" class="sr-only">
+        </div>
+        <p id="photo-error" class="error" role="alert" hidden></p>
+      </fieldset>
+
+      <div class="sheet-foot">
+        <button type="submit" class="btn primary wide">Save and shop</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Try-on -->
+  <dialog id="tryon" class="sheet wide-sheet" aria-labelledby="tryon-title">
+    <div class="sheet-head">
+      <h2 id="tryon-title">Try on</h2>
+      <button type="button" class="icon-btn close-btn" data-close aria-label="Close"></button>
+    </div>
+    <div class="compare">
+      <figure><img id="before" alt="Your photo"><figcaption>You</figcaption></figure>
+      <figure><div id="after-wrap" class="after"></div><figcaption>Wearing it</figcaption></figure>
+    </div>
+    <p id="tryon-status" class="status" role="status" aria-live="polite"></p>
+    <ol id="tryon-steps" class="steps"></ol>
+    <ul id="tryon-items" class="line-items"></ul>
+    <div class="sheet-foot row">
+      <button type="button" class="btn ghost" id="retry" hidden>Try again</button>
+      <button type="button" class="btn ghost" id="tryon-photo" hidden>Add your photo</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
