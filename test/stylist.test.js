@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { pairScore, suggestFor, styleMe, CATEGORIES } from '../lib/stylist.js';
+import { pairScore, suggestFor, styleMe, colorMatches, CATEGORIES } from '../lib/stylist.js';
 import { rankGarments } from '../lib/match.js';
 
 const catalog = JSON.parse(readFileSync(new URL('../data/catalog.json', import.meta.url)));
@@ -67,4 +67,48 @@ test('formal can pick a dress instead of top and bottoms', () => {
     assert.ok(!cats.includes('upper_body') && !cats.includes('lower_body'));
   }
   assert.ok(look.items.length >= 2);
+});
+
+test('colour words match items', () => {
+  assert.ok(colorMatches(byId('velcro-polo'), 'bright'));
+  assert.ok(!colorMatches(byId('seated-chino'), 'bright'));
+  assert.ok(colorMatches(byId('navy-blazer'), 'navy'));
+  assert.ok(colorMatches(byId('seated-chino'), 'neutral'));
+});
+
+test('avoiding bright colours leaves bold pieces out', () => {
+  const look = styleMe(rankGarments(catalog, []), { occasion: 'everyday', colorsAvoid: ['bright'] });
+  assert.ok(look.items.length >= 2);
+  assert.ok(look.items.every((i) => !i.bold));
+});
+
+test('"just a jacket" returns only jackets, with alternatives', () => {
+  const look = styleMe(rankGarments(catalog, ['seated']), { only: ['outer'] });
+  assert.deepEqual(look.items.map((i) => i.category), ['outer']);
+  assert.ok(look.alternatives.outer.length >= 2);
+  assert.equal(look.alternatives.outer[0], look.items[0].id);
+});
+
+test('colour families: green finds mint, blue finds navy', () => {
+  assert.ok(colorMatches(byId('port-access-hoodie'), 'green'));
+  assert.ok(colorMatches(byId('navy-blazer'), 'blue'));
+  assert.ok(!colorMatches(byId('velcro-polo'), 'green'));
+});
+
+test('an outfit never mixes men\'s and women\'s pieces', () => {
+  for (const occasion of ['everyday', 'work', 'night', 'formal', 'active']) {
+    const look = styleMe(rankGarments(catalog, ['seated', 'one_hand']), { occasion });
+    const sections = new Set(look.items.map((i) => i.for).filter((f) => f !== 'unisex'));
+    assert.ok(sections.size <= 1, `${occasion}: ${[...sections]}`);
+  }
+});
+
+test('a tight budget drops the jacket or shoes, never the trousers or top', () => {
+  const mens = catalog.filter((i) => i.for !== 'womens');
+  for (const budget of [120, 160, 200]) {
+    const look = styleMe(rankGarments(mens, ['seated', 'one_hand']), { occasion: 'formal', budget, colorsAvoid: ['bright'] });
+    const cats = look.items.map((i) => i.category);
+    assert.ok(cats.includes('full_body') || (cats.includes('lower_body') && cats.includes('upper_body')), `${budget}: ${cats}`);
+    assert.ok(look.total <= budget, `${budget}: ${look.total}`);
+  }
 });

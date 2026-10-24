@@ -6,10 +6,16 @@ import { createYouCamClient, createMockClient, YouCamError } from './lib/youcam.
 import { rankGarments, NEEDS, FEATURE_TEXT } from './lib/match.js';
 import { orderOutfit, startOutfitJob } from './lib/outfit.js';
 import { CATEGORIES, OCCASIONS, suggestFor, styleMe } from './lib/stylist.js';
+import { createGroqClient, GroqError } from './lib/groq.js';
+import { runStylist } from './lib/agent.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const garmentDir = path.join(root, 'data', 'garments');
 const catalog = JSON.parse(await readFile(path.join(root, 'data', 'catalog.json'), 'utf8'));
+
+const ai = process.env.GROQ_API_KEY
+  ? createGroqClient({ apiKey: process.env.GROQ_API_KEY, model: process.env.GROQ_MODEL || undefined })
+  : null;
 
 const apiKey = process.env.YOUCAM_API_KEY;
 const client = apiKey
@@ -51,7 +57,7 @@ app.use(express.json({ limit: '15mb' }));
 app.use(express.static(path.join(root, 'public')));
 app.use('/garments', express.static(garmentDir));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, mode: client.mode }));
+app.get('/api/health', (_req, res) => res.json({ ok: true, mode: client.mode, ai: Boolean(ai) }));
 
 // Product photos don't change while the server runs, so check them once.
 const withImage = new Set();
@@ -104,6 +110,30 @@ app.post('/api/style-me', (req, res) => {
   res.json(styleMe(rankedFor(profile), { occasion, budget }));
 });
 
+// AI stylist: free-text (or spoken) request -> a full outfit with reasons.
+app.post('/api/stylist', async (req, res) => {
+  if (!ai) return res.status(503).json({ error: 'ai_unavailable' });
+  const message = String(req.body?.message || '').trim().slice(0, 600);
+  if (message.length < 3) return res.status(400).json({ error: 'empty_request' });
+  try {
+    const profile = profileFrom(req.body);
+    res.json(await runStylist(ai, { message, profile: { needs: profile.needs, for: profile.forWho }, rankFor: rankedFor }));
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// Voice input: a short recording -> text, so people can ask without typing.
+app.post('/api/transcribe', express.raw({ type: 'audio/*', limit: '8mb' }), async (req, res) => {
+  if (!ai) return res.status(503).json({ error: 'ai_unavailable' });
+  if (!req.body?.length) return res.status(400).json({ error: 'empty_audio' });
+  try {
+    res.json({ text: await ai.transcribe(req.body, req.get('content-type')) });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 // Outfit jobs run in the background; the page polls for progress.
 const jobs = new Map();
 const JOB_TTL_MS = 60 * 60 * 1000;
@@ -153,6 +183,10 @@ app.get('/api/outfit/:jobId', (req, res) => {
 });
 
 function sendError(res, err) {
+  if (err instanceof GroqError) {
+    console.error(`AI error ${err.status} ${err.code}: ${err.message}`);
+    return res.status(err.status === 429 ? 429 : 502).json({ error: err.status === 429 ? 'ai_busy' : 'ai_error' });
+  }
   if (err instanceof YouCamError) {
     console.error(`YouCam error ${err.status} ${err.code}: ${err.message}`);
     const status = err.status >= 400 && err.status < 500 ? 400 : 502;
@@ -166,4 +200,5 @@ const port = Number(process.env.PORT) || 3000;
 app.listen(port, () => {
   console.log(`AdClo running at http://localhost:${port} (${client.mode} mode)`);
   if (client.mode === 'mock') console.log('No YOUCAM_API_KEY set: try-on returns your own photo.');
+  console.log(ai ? `AI stylist on (${ai.model})` : 'No GROQ_API_KEY set: Style me uses rules only.');
 });

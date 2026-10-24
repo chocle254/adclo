@@ -12,6 +12,7 @@ const ICONS = {
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z"/><path d="M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2z"/>',
   back: '<path d="M15 18l-6-6 6-6"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
 };
 const icon = (name) => {
@@ -59,9 +60,11 @@ const state = {
   items: [],                                  // ranked catalog for this profile
   look: new Map(store.load('look', [])),      // category -> { id, size }
   tryon: null,                                // garments in the open try-on
+  seen: new Map(),                            // items from AI results outside the current profile
+  ai: false,
   pollTimer: null,
 };
-const byId = (id) => state.items.find((i) => i.id === id);
+const byId = (id) => state.items.find((i) => i.id === id) ?? state.seen.get(id);
 const saveLook = () => { store.save('look', [...state.look]); updateLookCount(); };
 
 // ---------- API ----------
@@ -309,11 +312,54 @@ async function viewProduct(id) {
   );
 }
 
+const EXAMPLES = [
+  "My cousin's wedding is Saturday. I dress with one hand and I'm in my chair all day. Nothing bright, about $200.",
+  'Just a warm jacket for work, something in navy or brown.',
+  'Comfy weekend clothes. Tags drive me crazy and I love green.',
+];
+
 function viewStyle() {
   const occ = store.load('occasion', 'everyday');
   const budget = store.load('budget', '');
   const result = el('div', { class: 'section', 'aria-live': 'polite' });
+  const showLoading = () => mount(result, el('div', { class: 'shimmer', style: 'height:180px;border-radius:18px' }));
 
+  // --- Ask the AI stylist (type or speak) ---
+  const box = el('textarea', {
+    id: 'ask', name: 'ask', rows: 3, maxLength: 600,
+    placeholder: 'For example: a job interview next week, I use a wheelchair and buttons are hard. Under $250.',
+  });
+  box.value = store.load('ask', '');
+  const voiceStatus = el('p', { class: 'muted small voice-status', role: 'status' });
+  const mic = voiceButton(box, voiceStatus, () => askForm.requestSubmit());
+  const askForm = el('form', { class: 'ask panel' },
+    el('label', { for: 'ask', class: 'ask-label' }, icon('spark'), 'Tell AdClo what you need'),
+    el('p', { class: 'muted small' }, 'The occasion, what makes dressing hard, colours you like or avoid, your budget. Type it or say it.'),
+    el('div', { class: 'ask-row' }, box, mic),
+    voiceStatus,
+    el('div', { class: 'examples' }, EXAMPLES.map((ex) => el('button', {
+      type: 'button', class: 'chip example',
+      on: { click: () => { box.value = ex; box.focus(); } },
+    }, ex))),
+    el('button', { type: 'submit', class: 'btn accent' }, icon('spark'), 'Style me'));
+
+  askForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const message = box.value.trim();
+    if (message.length < 3) { box.focus(); return; }
+    store.save('ask', message);
+    showLoading();
+    try {
+      const look = await api('/api/stylist', { message, needs: state.profile.needs, for: state.profile.for });
+      renderStyled(look, result);
+      result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (ex) {
+      mount(result, el('div', { class: 'empty' }, el('h2', {}, 'The stylist is busy'),
+        el('p', {}, ex.code === 'ai_busy' ? 'Too many requests right now. Try again in a minute, or use the quick picks below.' : "We couldn't reach the AI stylist. Try the quick picks below.")));
+    }
+  });
+
+  // --- Quick picks (no AI needed) ---
   const form = el('form', { class: 'style-form' },
     el('fieldset', { class: 'choice-row' },
       el('legend', {}, "What's the occasion?"),
@@ -325,7 +371,7 @@ function viewStyle() {
       [['', 'No limit'], ['150', 'Under $150'], ['200', 'Under $200'], ['300', 'Under $300']].map(([v, l]) => el('label', {},
         el('input', { type: 'radio', name: 'budget', value: v, checked: v === budget }),
         el('span', {}, l)))),
-    el('button', { type: 'submit', class: 'btn accent' }, icon('spark'), 'Style me'));
+    el('button', { type: 'submit', class: state.ai ? 'btn ghost' : 'btn accent' }, icon('spark'), state.ai ? 'Style me with these' : 'Style me'));
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -334,37 +380,106 @@ function viewStyle() {
     const b = fd.get('budget') || '';
     store.save('occasion', occasion);
     store.save('budget', b);
-    mount(result, el('div', { class: 'shimmer', style: 'height:180px;border-radius:18px' }));
+    showLoading();
     const look = await api('/api/style-me', { needs: state.profile.needs, for: state.profile.for, occasion, budget: b || null });
     renderStyled(look, result);
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  mount(view(), 
+  mount(view(),
     el('h1', { class: 'page-title' }, 'Style me'),
-    el('p', { class: 'muted' }, 'AdClo picks a complete outfit that suits your needs, the occasion and your budget, then shows it on you.'),
+    el('p', { class: 'muted' }, 'AdClo puts together a complete outfit that suits your needs, the occasion and your budget, then shows it on you.'),
     profileStrip(),
-    el('div', { class: 'section' }, form),
+    state.ai ? el('div', { class: 'section' }, askForm) : null,
+    el('div', { class: 'section' },
+      state.ai ? el('h2', { class: 'sub-head' }, 'Or choose quickly') : null,
+      form),
     result,
   );
 }
 
+// Record a short voice note, turn it into text, then submit.
+function voiceButton(box, status, onDone) {
+  const btn = el('button', { type: 'button', class: 'icon-btn mic', 'aria-label': 'Speak your request', 'aria-pressed': 'false' }, icon('mic'));
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { btn.hidden = true; return btn; }
+  let rec = null;
+  let chunks = [];
+  let stopTimer;
+  const stop = () => { clearTimeout(stopTimer); if (rec?.state === 'recording') rec.stop(); };
+
+  btn.addEventListener('click', async () => {
+    if (rec?.state === 'recording') return stop();
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      status.textContent = 'Microphone access was blocked. You can type instead.';
+      return;
+    }
+    chunks = [];
+    rec = new MediaRecorder(stream);
+    rec.addEventListener('dataavailable', (e) => { if (e.data.size) chunks.push(e.data); });
+    rec.addEventListener('stop', async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      btn.setAttribute('aria-pressed', 'false');
+      btn.classList.remove('on');
+      const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+      if (blob.size < 2000) { status.textContent = "Didn't catch that. Tap the mic and try again."; return; }
+      status.textContent = 'Writing down what you said…';
+      try {
+        const res = await fetch('/api/transcribe', { method: 'POST', headers: { 'content-type': blob.type }, body: blob });
+        const json = await res.json();
+        if (!res.ok || !json.text) throw new Error();
+        box.value = json.text;
+        status.textContent = 'Got it. Styling you now.';
+        onDone();
+      } catch {
+        status.textContent = "Sorry, that didn't work. Try again or type your request.";
+      }
+    });
+    rec.start();
+    btn.setAttribute('aria-pressed', 'true');
+    btn.classList.add('on');
+    status.textContent = 'Listening… tap the mic again when you are done.';
+    stopTimer = setTimeout(stop, 30_000);
+  });
+  return btn;
+}
+
 function renderStyled(look, target) {
   if (!look.items.length) {
-    mount(target, el('div', { class: 'empty' }, el('h2', {}, 'Nothing fits that budget yet'), el('p', {}, 'Try a higher budget or a different occasion.')));
+    mount(target, el('div', { class: 'empty' }, el('h2', {}, 'Nothing fits that yet'), el('p', {}, 'Try a higher budget, fewer colour limits or a different occasion.')));
     return;
   }
-  const items = look.items.map((i) => ({ ...byId(i.id), why: i.why }));
-  mount(target, 
-    el('div', { class: 'section-head' }, el('h2', {}, `Your ${look.occasion.toLowerCase()} look`)),
+  for (const i of look.items) state.seen.set(i.id, i);
+  const items = look.items.map((i) => ({ ...(byId(i.id) || {}), ...i }));
+  const plan = look.plan;
+  const needLabels = plan ? state.meta.needs.filter((n) => plan.needs.includes(n.id)).map((n) => n.short) : [];
+  const heard = plan ? el('div', { class: 'heard panel' },
+    el('span', { class: 'card-type' }, 'What I heard'),
+    el('p', {}, plan.summary || ''),
+    el('div', { class: 'tags' },
+      el('span', { class: 'tag' }, look.occasion),
+      plan.budget ? el('span', { class: 'tag' }, `Up to ${money(plan.budget)}`) : null,
+      needLabels.map((n) => el('span', { class: 'tag' }, n)),
+      plan.colorsLike.map((c) => el('span', { class: 'tag' }, `Likes ${c}`)),
+      plan.colorsAvoid.map((c) => el('span', { class: 'tag' }, `No ${c}`)))) : null;
+
+  mount(target,
+    heard,
+    el('div', { class: 'section-head' },
+      el('h2', {}, items.length === 1 ? `Your pick` : `Your ${look.occasion.toLowerCase()} look`),
+      look.source === 'ai' ? el('span', { class: 'pill mid' }, icon('spark'), 'AI stylist') : null),
+    look.intro ? el('p', { class: 'intro' }, look.intro) : null,
     el('ul', { class: 'look-list', role: 'list' }, items.map((i) => el('li', { class: 'look-row' },
       el('a', { href: `#/p/${i.id}` }, el('img', { src: `/garments/${i.image}`, alt: '' })),
       el('div', {},
         el('span', { class: 'card-type' }, catOne(i.category)),
         el('a', { class: 'name', href: `#/p/${i.id}` }, el('h3', {}, i.name)),
         el('span', { class: 'price' }, money(i.price)),
-        el('ul', {}, i.why.map((w) => el('li', {}, w))))))),
+        el('ul', {}, (i.aiWhy ? [i.aiWhy] : i.why).map((w) => el('li', {}, w))))))),
     el('div', { class: 'total-bar' },
-      el('div', {}, el('span', { class: 'muted' }, 'Full outfit '), el('strong', {}, money(look.total))),
+      el('div', {}, el('span', { class: 'muted' }, items.length > 1 ? 'Full outfit ' : 'Price '), el('strong', {}, money(look.total))),
       el('div', { class: 'hero-actions' },
         el('button', { type: 'button', class: 'btn ghost', on: { click: () => {
           for (const i of items) {
@@ -373,9 +488,9 @@ function renderStyled(look, target) {
           }
           if (items.some((i) => i.category === 'upper_body' || i.category === 'lower_body')) state.look.delete('full_body');
           saveLook();
-          toast('Outfit saved to your look', { href: '#/look', text: 'View' });
+          toast('Saved to your look', { href: '#/look', text: 'View' });
         } } }, 'Save to my look'),
-        el('button', { type: 'button', class: 'btn primary', on: { click: () => openTryOn(items) } }, icon('camera'), 'Try it all on me'))),
+        el('button', { type: 'button', class: 'btn primary', on: { click: () => openTryOn(items) } }, icon('camera'), items.length > 1 ? 'Try it all on me' : 'Try it on me'))),
   );
 }
 
@@ -641,6 +756,7 @@ async function start() {
   const [meta, health] = await Promise.all([api('/api/meta'), api('/api/health').catch(() => ({}))]);
   state.meta = meta;
   if (health.mode === 'mock') { $('#mode').textContent = 'Demo mode'; $('#mode').hidden = false; }
+  state.ai = Boolean(health.ai);
   await refreshItems();
   buildNav();
   await render();
