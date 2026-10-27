@@ -1,6 +1,17 @@
 # AdClo
 
-**AdClo** (adaptive clothing) helps disabled people and anyone who finds dressing hard find real adaptive clothes that work for them, then try them on their own photo before buying.
+**Adaptive clothing that works the way you do.**
+
+Tell AdClo what makes dressing hard (limited grip, one hand, a carer helping, sensory needs, a brace,
+a medical device or sitting all day). It ranks real adaptive clothes from IZ Adaptive, Silverts and
+BILLY Footwear for you, shows them on **your own photo** with YouCam virtual try-on, and an AI stylist
+you can talk to builds whole outfits and talks back. Every Buy link opens that exact product.
+
+**Live app:** https://adclo.vercel.app · **Demo video:** [`demo/adclo-demo.mp4`](demo/adclo-demo.mp4)
+
+| Your photo | Tried on with YouCam (IZ Adaptive open-back polo) |
+|---|---|
+| <img src="public/demo/seated-sample.jpg" width="260" alt="A man in a wheelchair in a white shirt"> | <img src="public/demo/polo-tryon-result.jpg" width="260" alt="The same man wearing the blue open-back polo"> |
 
 About 1.3 billion people live with a significant disability (WHO): limited grip, using one hand,
 needing help to dress, sensory sensitivity, a prosthetic or brace, a medical device, or sitting all day.
@@ -21,7 +32,7 @@ access), who you shop for, your usual sizes and a photo of you.
   ("Charcoal lets the sky blue stand out · both smart").
 - **AI stylist**: type or *say* what you need ("my cousin's wedding is Saturday, I dress with one hand,
   nothing bright, about $200"). AdClo shows what it understood, then builds an outfit and explains each
-  pick. Voice input helps people who find typing hard.
+  pick. Voice input helps people who find typing hard, and the stylist answers out loud in a natural voice.
 - **Quick style**: pick an occasion and a budget, no AI needed.
 - **Your look**: the pieces you picked, one per slot. Try them all on together, then buy each one.
 - **Full-outfit try-on**: try-ons are chained. Bottoms first, then top, jacket and shoes, each step

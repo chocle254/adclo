@@ -227,7 +227,7 @@ function viewHome() {
           el('a', { class: 'btn ghost', href: `#/shop/${firstCategory()}` }, 'Browse the shop'))),
       el('div', { class: 'hero-art' },
         el('figure', {}, el('img', { src: '/demo/seated-sample.jpg', alt: 'A man in a wheelchair wearing a white shirt and tan trousers' }), el('figcaption', {}, 'Before')),
-        el('figure', {}, el('img', { src: '/demo/seated-outfit-result.jpg', alt: 'The same man, now wearing a mint hoodie and charcoal trousers' }), el('figcaption', {}, 'Tried on')))),
+        el('figure', {}, el('img', { src: '/demo/polo-tryon-result.jpg', alt: 'The same man, now wearing the IZ Adaptive open-back polo in sky blue' }), el('figcaption', {}, 'Tried on')))),
     profileStrip(),
 
     el('section', { class: 'section' },
