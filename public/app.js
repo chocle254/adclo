@@ -14,6 +14,8 @@ const ICONS = {
   back: '<path d="M15 18l-6-6 6-6"/>',
   mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
   camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  speaker: '<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+  stop: '<rect x="7" y="7" width="10" height="10" rx="2"/>',
 };
 const icon = (name) => {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -315,6 +317,101 @@ async function viewProduct(id) {
   );
 }
 
+// ---------- Voice output ----------
+// The stylist talks back in a natural voice (Groq Orpheus). The voice model reads at most
+// 200 characters at a time, so replies are split into sentences, fetched ahead, and played
+// back to back on one audio element (one element so iPhones allow playback after a tap).
+const VOICES = [['hannah', 'Hannah'], ['autumn', 'Autumn'], ['diana', 'Diana'], ['troy', 'Troy'], ['austin', 'Austin'], ['daniel', 'Daniel']];
+const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+
+function speechChunks(text, max = 190) {
+  const out = [];
+  for (const sentence of text.replace(/\s+/g, ' ').trim().split(/(?<=[.!?…])\s+/)) {
+    let rest = sentence;
+    while (rest.length > max) { // very long sentence: break at a comma or space
+      const cut = Math.max(rest.lastIndexOf(', ', max), rest.lastIndexOf(' ', max));
+      out.push(rest.slice(0, cut > 40 ? cut + 1 : max).trim());
+      rest = rest.slice(cut > 40 ? cut + 1 : max).trim();
+    }
+    const last = out.at(-1);
+    if (last && last.length + rest.length + 1 <= max) out[out.length - 1] = `${last} ${rest}`;
+    else if (rest) out.push(rest);
+  }
+  return out;
+}
+
+const speaker = (() => {
+  const audio = new Audio();
+  let run = 0;
+  let urls = [];
+  let listener = () => {};
+  const setPlaying = (on) => listener(on);
+  return {
+    // Call inside a tap so the browser lets us play audio later.
+    unlock() { audio.src = SILENT_WAV; audio.play().catch(() => {}); },
+    stop() { run++; audio.pause(); urls.forEach((u) => URL.revokeObjectURL(u)); urls = []; setPlaying(false); },
+    async say(text, onState) {
+      this.stop();
+      listener = onState;
+      const id = run;
+      const voice = store.load('voice', 'hannah');
+      const fetchChunk = async (chunk) => {
+        const res = await fetch('/api/speak', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: chunk, voice }) });
+        if (!res.ok) throw new Error('voice_unavailable');
+        const url = URL.createObjectURL(await res.blob());
+        urls.push(url);
+        return url;
+      };
+      const chunks = speechChunks(text);
+      const pending = chunks.map(() => null);
+      const get = (i) => (pending[i] ??= fetchChunk(chunks[i]));
+      setPlaying(true);
+      try {
+        for (let i = 0; i < chunks.length; i++) {
+          const url = await get(i);
+          if (i + 1 < chunks.length) get(i + 1).catch(() => {}); // fetch the next bit while this one plays
+          if (id !== run) return;
+          audio.src = url;
+          await audio.play();
+          await new Promise((resolve) => { audio.onended = resolve; audio.onpause = resolve; });
+          if (id !== run) return;
+        }
+        setPlaying(false);
+      } catch (err) {
+        if (id === run) { setPlaying(false); throw err; }
+      }
+    },
+  };
+})();
+window.addEventListener('hashchange', () => speaker.stop());
+
+// "Listen" bar shown above an AI stylist answer. Plays straight away when talk-back is on.
+function voiceBar(text, autoplay) {
+  const status = el('span', { class: 'muted small', role: 'status' });
+  const btn = el('button', { type: 'button', class: 'btn ghost sm' });
+  const paint = (playing) => {
+    mount(btn, icon(playing ? 'stop' : 'speaker'), playing ? 'Stop' : 'Listen');
+    btn.setAttribute('aria-label', playing ? 'Stop the stylist talking' : 'Hear the stylist');
+  };
+  const play = () => speaker.say(text, paint).catch(() => {
+    status.textContent = "Voice isn't available right now, but everything's written below.";
+  });
+  btn.addEventListener('click', () => (btn.textContent.includes('Stop') ? speaker.stop() : (speaker.unlock(), play())));
+  paint(false);
+  if (autoplay) play();
+  return el('div', { class: 'voice-bar' }, btn, status);
+}
+
+function voiceSettings() {
+  const talk = el('input', { type: 'checkbox', checked: store.load('talkback', true) });
+  talk.addEventListener('change', () => { store.save('talkback', talk.checked); if (!talk.checked) speaker.stop(); });
+  const pick = el('select', { 'aria-label': 'Stylist voice' }, VOICES.map(([v, label]) => el('option', { value: v, selected: v === store.load('voice', 'hannah') }, label)));
+  pick.addEventListener('change', () => store.save('voice', pick.value));
+  return el('div', { class: 'voice-settings' },
+    el('label', { class: 'check' }, talk, el('span', {}, 'Talk back to me')),
+    el('label', { class: 'small muted' }, 'Voice ', pick));
+}
+
 const EXAMPLES = [
   "My cousin's wedding is Saturday. I dress with one hand. Nothing bright, about $200.",
   'My mum helps me get dressed. Something comfy for every day that goes on without lifting my arms.',
@@ -340,6 +437,7 @@ function viewStyle() {
     el('p', { class: 'muted small' }, 'The occasion, what makes dressing hard, colours you like or avoid, your budget. Type it or say it.'),
     el('div', { class: 'ask-row' }, box, mic),
     voiceStatus,
+    voiceSettings(),
     el('div', { class: 'examples' }, EXAMPLES.map((ex) => el('button', {
       type: 'button', class: 'chip example',
       on: { click: () => { box.value = ex; box.focus(); } },
@@ -351,10 +449,14 @@ function viewStyle() {
     const message = box.value.trim();
     if (message.length < 3) { box.focus(); return; }
     store.save('ask', message);
+    const talkBack = store.load('talkback', true);
+    if (talkBack) speaker.unlock(); // still inside the tap, so audio can play when the answer lands
+    else speaker.stop();
     showLoading();
     try {
       const look = await api('/api/stylist', { message, needs: state.profile.needs, for: state.profile.for });
       renderStyled(look, result);
+      if (look.spoken) result.prepend(voiceBar(look.spoken, talkBack));
       result.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (ex) {
       mount(result, el('div', { class: 'empty' }, el('h2', {}, 'The stylist is busy'),
@@ -412,6 +514,8 @@ function voiceButton(box, status, onDone) {
 
   btn.addEventListener('click', async () => {
     if (rec?.state === 'recording') return stop();
+    speaker.stop();
+    if (store.load('talkback', true)) speaker.unlock(); // a tap, so the spoken answer can play later
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });

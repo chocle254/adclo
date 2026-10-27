@@ -37,7 +37,14 @@ access), who you shop for, your usual sizes and a photo of you.
    shortlist or over budget are replaced by the rules-based choice, so it cannot invent clothes.
 
 The prompts require person-first language, and a filter replaces phrases like "wheelchair-bound"
-in anything the AI writes. Voice uses Groq's `whisper-large-v3-turbo`.
+in anything the AI writes. Voice input uses Groq's `whisper-large-v3-turbo`.
+
+**The stylist talks back.** Alongside the written answer, the AI writes a short, casual spoken reply,
+the way a friend would talk you through the outfit, not a read-out of the page. It's spoken with Groq's
+`canopylabs/orpheus-v1-english` (six voices to pick from). It plays on its own when "Talk back to me"
+is on, and there's a Listen / Stop button on every answer. Replies are split into sentences under 200
+characters (the model's limit) and played back to back. The Groq org admin must accept the Orpheus
+terms once in the Groq console before voice output works.
 
 Core logic lives in `lib/`: `agent.js` (AI stylist), `groq.js` (AI client), `match.js` (needs to features), `stylist.js` (pairing and outfits),
 `outfit.js` (chained try-ons) and `youcam.js` (API client).

@@ -122,6 +122,22 @@ app.post('/api/transcribe', express.raw({ type: 'audio/*', limit: '4mb' }), asyn
   }
 });
 
+// Voice output: up to 200 characters of the stylist's spoken reply -> natural speech (WAV).
+// The page splits longer replies into sentences and plays them back to back.
+const VOICES = ['hannah', 'autumn', 'diana', 'troy', 'austin', 'daniel'];
+app.post('/api/speak', async (req, res) => {
+  if (!ai) return res.status(503).json({ error: 'ai_unavailable' });
+  const text = String(req.body?.text || '').replace(/\s+/g, ' ').trim();
+  if (!text || text.length > 200) return res.status(400).json({ error: 'bad_text' });
+  const voice = VOICES.includes(req.body?.voice) ? req.body.voice : VOICES[0];
+  try {
+    const wav = await ai.speak(text, voice);
+    res.set({ 'content-type': 'audio/wav', 'cache-control': 'private, max-age=3600' }).send(wav);
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 // ---- Try-on ----
 // Stateless, so it works on serverless hosts. The page drives the steps:
 //   1. POST /api/tryon/start  -> uploads the photo, returns its file id and the dressing order

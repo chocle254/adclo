@@ -287,6 +287,11 @@ figcaption { text-align: center; color: var(--muted); font-size: 0.85rem; margin
 .mic.on { background: var(--accent); color: var(--ink-text); border-color: var(--accent); animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); } 50% { box-shadow: 0 0 0 10px transparent; } }
 .voice-status:empty { display: none; }
+.voice-settings { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; margin: 4px 0 10px; }
+.voice-settings .check { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; cursor: pointer; }
+.voice-settings input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
+.voice-settings select { min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); color: var(--text); font: inherit; }
+.voice-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
 .examples { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .examples::-webkit-scrollbar { display: none; }
 .chip.example { max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.85rem; color: var(--muted); }

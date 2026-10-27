@@ -85,3 +85,13 @@ test('if the choosing step fails, the rules outfit is still returned', async () 
   assert.equal(out.source, 'rules');
   assert.ok(out.items.length >= 2);
 });
+
+test('a friendly spoken line is made when the AI did not write one', async () => {
+  const { spokenFallback } = await import('../lib/agent.js');
+  const line = spokenFallback([
+    { color: { name: 'navy' }, type: 'Chinos' },
+    { color: { name: 'sky' }, type: 'Polo' },
+  ]);
+  assert.match(line, /navy chinos and the sky polo/);
+  assert.ok(spokenFallback([]).length > 10);
+});
