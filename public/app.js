@@ -599,7 +599,7 @@ function paintPhoto() {
   const img = $('#profile-photo');
   img.hidden = !draftPhoto;
   if (draftPhoto) img.src = draftPhoto;
-  $('#photo-label').textContent = draftPhoto ? 'Change photo' : 'Choose or take a photo';
+  $('#photo-label').textContent = draftPhoto ? 'Choose a different photo' : 'Choose a photo';
 }
 
 // Resize in the browser so uploads stay small and within YouCam's limits.
@@ -620,8 +620,10 @@ function loadPhoto(file) {
   });
 }
 
-$('#photo-input').addEventListener('change', async (e) => {
+// Two inputs: one opens the gallery/files, the other opens the camera.
+const onPhoto = async (e) => {
   const file = e.target.files?.[0];
+  e.target.value = ''; // so picking the same photo again still fires
   const err = $('#photo-error');
   err.hidden = true;
   if (!file) return;
@@ -632,7 +634,9 @@ $('#photo-input').addEventListener('change', async (e) => {
     err.textContent = explain(ex.message);
     err.hidden = false;
   }
-});
+};
+$('#photo-input').addEventListener('change', onPhoto);
+$('#camera-input').addEventListener('change', onPhoto);
 
 $('#profile-form').addEventListener('submit', async (e) => {
   e.preventDefault();
