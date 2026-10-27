@@ -1,0 +1,182 @@
+[
+  {
+    "id": "magnetic-oxford", "name": "Magnetic-closure overshirt", "type": "Shirt", "category": "upper_body", "for": "mens",
+    "price": 49, "sizes": ["S", "M", "L", "XL", "XXL"],
+    "color": { "name": "sky blue", "hex": "#9db8d9" }, "tone": "cool", "style": ["casual", "smart"],
+    "features": ["magnetic_closure", "one_hand_dress", "tagless", "soft_fabric"],
+    "description": "A relaxed overshirt with magnets hidden behind every button. It closes itself as you line up the front.",
+    "image": "magnetic-oxford.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20magnetic%20shirt"
+  },
+  {
+    "id": "velcro-polo", "name": "Hook-and-loop polo", "type": "Polo", "category": "upper_body", "for": "mens",
+    "price": 38, "sizes": ["S", "M", "L", "XL", "XXL"],
+    "color": { "name": "red", "hex": "#d7263d" }, "tone": "warm", "bold": true, "style": ["casual", "sport"],
+    "features": ["velcro_closure", "one_hand_dress", "tagless"],
+    "description": "A classic polo with a hook-and-loop placket instead of buttons.",
+    "image": "velcro-polo.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20polo"
+  },
+  {
+    "id": "port-access-hoodie", "name": "Port-access hoodie", "type": "Hoodie", "category": "upper_body", "for": "unisex",
+    "price": 55, "sizes": ["XS", "S", "M", "L", "XL", "XXL"],
+    "color": { "name": "mint", "hex": "#bfe8c4" }, "tone": "cool", "style": ["casual", "sport"],
+    "features": ["port_access", "zip_pull_loop", "adjustable_sleeves", "soft_fabric", "flat_seams"],
+    "description": "A soft fleece hoodie with hidden zips at the chest and sleeves for port or IV access.",
+    "image": "port-access-hoodie.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20port%20access%20hoodie"
+  },
+  {
+    "id": "sensory-tee", "name": "Sensory-friendly crew tee", "type": "T-shirt", "category": "upper_body", "for": "unisex",
+    "price": 22, "sizes": ["XS", "S", "M", "L", "XL", "XXL"],
+    "color": { "name": "white", "hex": "#f4f4f2" }, "tone": "neutral", "style": ["casual", "sport"],
+    "features": ["tagless", "flat_seams", "soft_fabric", "pull_on", "wide_neck"],
+    "description": "Tagless, flat-seamed cotton with a wider neck that slips on easily.",
+    "image": "sensory-tee.jpg", "buyUrl": "https://www.zappos.com/search?term=sensory%20friendly%20shirt"
+  },
+  {
+    "id": "open-back-blouse", "name": "Open-back ruffle blouse", "type": "Blouse", "category": "upper_body", "for": "womens",
+    "price": 42, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "white", "hex": "#f5f2ee" }, "tone": "neutral", "style": ["smart", "formal"],
+    "features": ["open_back", "side_opening", "velcro_closure", "soft_fabric", "tagless"],
+    "description": "Looks like a classic blouse from the front. The back opens fully so a carer can dress you seated.",
+    "image": "open-back-blouse.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20open%20back%20top"
+  },
+  {
+    "id": "magnetic-blouse", "name": "Magnetic-button blouse", "type": "Blouse", "category": "upper_body", "for": "womens",
+    "price": 46, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "blush", "hex": "#e6c9c0" }, "tone": "warm", "style": ["smart", "formal"],
+    "features": ["magnetic_closure", "one_hand_dress", "soft_fabric", "tagless"],
+    "description": "A lightweight work blouse with magnetic buttons that snap closed with one hand.",
+    "image": "magnetic-blouse.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20magnetic%20blouse"
+  },
+
+  {
+    "id": "seated-chino", "name": "Seated-cut tailored trousers", "type": "Trousers", "category": "lower_body", "for": "mens",
+    "price": 59, "sizes": ["28", "30", "32", "34", "36", "38"],
+    "color": { "name": "charcoal", "hex": "#4a4d52" }, "tone": "neutral", "style": ["smart", "formal"],
+    "features": ["seated_cut", "no_back_pockets", "stretch", "pull_on", "high_rise_waist"],
+    "description": "Cut higher at the back and lower at the front so they sit right all day in a chair.",
+    "image": "seated-chino.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20seated%20pants"
+  },
+  {
+    "id": "pull-on-chino", "name": "Pull-on stretch chino", "type": "Trousers", "category": "lower_body", "for": "mens",
+    "price": 52, "sizes": ["28", "30", "32", "34", "36", "38"],
+    "color": { "name": "stone", "hex": "#d9d4c7" }, "tone": "neutral", "style": ["casual", "smart"],
+    "features": ["pull_on", "stretch", "seated_cut", "no_back_pockets"],
+    "description": "Looks like a chino, pulls on like a jogger. A hidden elastic waist means no fly and no button.",
+    "image": "pull-on-chino.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20pull%20on%20chino"
+  },
+  {
+    "id": "side-zip-jogger", "name": "Side-zip jogger", "type": "Joggers", "category": "lower_body", "for": "womens",
+    "price": 45, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "cream", "hex": "#efeae0" }, "tone": "neutral", "style": ["casual", "sport"],
+    "features": ["side_zip_legs", "wide_leg_opening", "pull_on", "zip_pull_loop", "stretch", "no_back_pockets"],
+    "description": "Full-length side zips open each leg completely, for braces, prosthetics or dressing seated.",
+    "image": "side-zip-jogger.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20side%20zip%20pants"
+  },
+  {
+    "id": "ostomy-highrise", "name": "High-rise access trousers", "type": "Trousers", "category": "lower_body", "for": "womens",
+    "price": 62, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "teal", "hex": "#1f6f6b" }, "tone": "cool", "style": ["casual", "smart"],
+    "features": ["abdominal_access", "high_rise_waist", "seated_cut", "stretch", "no_back_pockets"],
+    "description": "A flowing wide-leg trouser with a discreet front opening for tube or ostomy access.",
+    "image": "ostomy-highrise.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20high%20rise%20pants"
+  },
+  {
+    "id": "classic-jeans", "name": "Standard five-pocket jeans", "type": "Jeans (standard)", "category": "lower_body", "for": "mens",
+    "price": 40, "sizes": ["28", "30", "32", "34", "36", "38"],
+    "color": { "name": "denim blue", "hex": "#3d5a80" }, "tone": "neutral", "style": ["casual"],
+    "features": ["back_pockets", "long_hem", "small_buttons"],
+    "description": "Regular jeans, for comparison. Back pockets, a button fly and a long hem.",
+    "image": "classic-jeans.jpg", "buyUrl": "https://www.zappos.com/search?term=jeans"
+  },
+
+  {
+    "id": "seated-blazer", "name": "Seated-fit tweed blazer", "type": "Blazer", "category": "outer", "for": "mens",
+    "price": 89, "sizes": ["S", "M", "L", "XL", "XXL"],
+    "color": { "name": "brown", "hex": "#6b4f2e" }, "tone": "warm", "style": ["smart", "formal"],
+    "features": ["seated_cut", "magnetic_closure", "stretch"],
+    "description": "A shorter back so it never bunches against your chair, with a magnetic front closure.",
+    "image": "seated-blazer.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20blazer"
+  },
+  {
+    "id": "navy-blazer", "name": "Magnetic navy blazer", "type": "Blazer", "category": "outer", "for": "mens",
+    "price": 95, "sizes": ["S", "M", "L", "XL", "XXL"],
+    "color": { "name": "navy", "hex": "#24365e" }, "tone": "neutral", "style": ["smart", "formal"],
+    "features": ["magnetic_closure", "stretch", "seated_cut", "one_hand_dress"],
+    "description": "A sharp navy blazer in stretch fabric that's easy to get your arms into.",
+    "image": "navy-blazer.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20navy%20blazer"
+  },
+  {
+    "id": "easy-wrap-coat", "name": "Easy-on wrap coat", "type": "Coat", "category": "outer", "for": "womens",
+    "price": 98, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "red", "hex": "#a3122a" }, "tone": "warm", "bold": true, "style": ["smart", "formal"],
+    "features": ["side_opening", "wide_neck", "magnetic_closure", "seated_cut"],
+    "description": "A tailored coat that wraps on from the front, so there's no struggle with arm holes behind you.",
+    "image": "easy-wrap-coat.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20coat"
+  },
+  {
+    "id": "rust-jacket", "name": "Magnetic longline jacket", "type": "Jacket", "category": "outer", "for": "womens",
+    "price": 79, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "rust", "hex": "#a4532b" }, "tone": "warm", "style": ["casual", "smart"],
+    "features": ["magnetic_closure", "soft_fabric", "seated_cut"],
+    "description": "A soft longline jacket with magnetic closures and a shaped back for sitting.",
+    "image": "rust-jacket.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20jacket%20women"
+  },
+
+  {
+    "id": "zip-sneaker", "name": "Zip-around leather sneaker", "type": "Sneakers", "category": "shoes", "for": "unisex",
+    "price": 75, "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"],
+    "color": { "name": "red", "hex": "#c8102e" }, "tone": "warm", "bold": true, "style": ["casual"],
+    "features": ["zip_around", "wide_opening", "elastic_laces"],
+    "description": "A zip runs around the heel so the whole top opens. Slide your foot in from above.",
+    "image": "zip-sneaker.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20zip%20around%20sneaker"
+  },
+  {
+    "id": "side-zip-hightop", "name": "Side-zip canvas high-top", "type": "High-tops", "category": "shoes", "for": "unisex",
+    "price": 60, "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"],
+    "color": { "name": "black", "hex": "#1c1c1e" }, "tone": "neutral", "style": ["casual"],
+    "features": ["zip_pull_loop", "wide_opening", "elastic_laces"],
+    "description": "A classic high-top with a hidden side zip and elastic laces you never need to tie.",
+    "image": "side-zip-hightop.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20high%20top%20zipper"
+  },
+  {
+    "id": "wide-runner", "name": "Wide-fit orthotic runner", "type": "Trainers", "category": "shoes", "for": "unisex",
+    "price": 88, "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"],
+    "color": { "name": "cream", "hex": "#e9e3d5" }, "tone": "neutral", "style": ["sport", "casual"],
+    "features": ["wide_opening", "velcro_closure", "zip_around"],
+    "description": "Extra depth and a wide opening that fits orthotics and ankle-foot braces.",
+    "image": "wide-runner.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20orthotic%20sneaker"
+  },
+  {
+    "id": "easy-lace-shoe", "name": "Easy-lace suede shoe", "type": "Shoes", "category": "shoes", "for": "unisex",
+    "price": 70, "sizes": ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"],
+    "color": { "name": "tan", "hex": "#b07a43" }, "tone": "warm", "style": ["casual", "smart"],
+    "features": ["elastic_laces", "pull_on"],
+    "description": "Elastic laces turn a smart suede shoe into a slip-on.",
+    "image": "easy-lace-shoe.jpg", "buyUrl": "https://www.zappos.com/search?term=elastic%20lace%20shoes"
+  },
+
+  {
+    "id": "magnetic-wrap-dress", "name": "Magnetic wrap dress", "type": "Dress", "category": "full_body", "for": "womens",
+    "price": 68, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "aqua", "hex": "#7fd3d6" }, "tone": "cool", "style": ["casual", "smart"],
+    "features": ["magnetic_closure", "side_opening", "stretch", "soft_fabric"],
+    "description": "A stretch jersey dress that wraps on and closes with a magnetic side tab.",
+    "image": "magnetic-wrap-dress.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20wrap%20dress"
+  },
+  {
+    "id": "side-zip-dress", "name": "Side-zip shift dress", "type": "Dress", "category": "full_body", "for": "womens",
+    "price": 64, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "coral", "hex": "#f08a72" }, "tone": "warm", "style": ["casual", "smart"],
+    "features": ["side_opening", "zip_pull_loop", "seated_cut", "stretch"],
+    "description": "A long side zip with a big pull loop means you can step in or have it put on seated.",
+    "image": "side-zip-dress.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20side%20zip%20dress"
+  },
+  {
+    "id": "seated-evening-dress", "name": "Seated-cut evening dress", "type": "Dress", "category": "full_body", "for": "womens",
+    "price": 92, "sizes": ["XS", "S", "M", "L", "XL"],
+    "color": { "name": "black", "hex": "#151515" }, "tone": "neutral", "style": ["formal", "smart"],
+    "features": ["seated_cut", "open_back", "stretch", "flat_seams"],
+    "description": "Cut to drape well when seated, with an open back that makes dressing easy.",
+    "image": "seated-evening-dress.jpg", "buyUrl": "https://www.zappos.com/search?term=adaptive%20evening%20dress"
+  }
+]

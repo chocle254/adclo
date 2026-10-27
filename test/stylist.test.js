@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { pairScore, suggestFor, styleMe, colorMatches, CATEGORIES } from '../lib/stylist.js';
 import { rankGarments } from '../lib/match.js';
 
-const catalog = JSON.parse(readFileSync(new URL('../data/catalog.json', import.meta.url)));
+const catalog = JSON.parse(readFileSync(new URL('./fixtures/catalog.json', import.meta.url)));
 const byId = (id) => catalog.find((i) => i.id === id);
 
 test('catalog items have the fields the stylist needs', () => {

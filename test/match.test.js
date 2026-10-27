@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { rankGarments, NEEDS, FEATURE_TEXT } from '../lib/match.js';
 
-const catalog = JSON.parse(readFileSync(new URL('../data/catalog.json', import.meta.url)));
+const catalog = JSON.parse(readFileSync(new URL('./fixtures/catalog.json', import.meta.url)));
 
 test('every feature in needs and catalog has user-facing text', () => {
   for (const need of Object.values(NEEDS)) {

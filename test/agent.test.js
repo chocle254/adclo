@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { runStylist, understand, cleanLanguage } from '../lib/agent.js';
 import { rankGarments } from '../lib/match.js';
 
-const catalog = JSON.parse(readFileSync(new URL('../data/catalog.json', import.meta.url)));
+const catalog = JSON.parse(readFileSync(new URL('./fixtures/catalog.json', import.meta.url)));
 const rankFor = ({ needs, forWho }) => rankGarments(
   catalog.filter((i) => forWho === 'all' || i.for === forWho || i.for === 'unisex'), needs,
 ).map((i) => ({ ...i, featureText: i.features }));

@@ -1,10 +1,10 @@
 # AdClo
 
-**AdClo** (adaptive clothing) helps you find clothes that work for how you live, then shows them on you, seated the way you actually sit.
+**AdClo** (adaptive clothing) helps disabled people and anyone who finds dressing hard find real adaptive clothes that work for them, then try them on their own photo before buying.
 
-About 80 million people worldwide need a wheelchair (WHO), and many more live with limited hand
-movement, limb differences, or medical devices. Most online try-on tools assume a standing model,
-and most shopping filters only cover size and colour. AdClo starts from the problem
+About 1.3 billion people live with a significant disability (WHO): limited grip, using one hand,
+needing help to dress, sensory sensitivity, a prosthetic or brace, a medical device, or sitting all day.
+Most shopping filters only cover size and colour. AdClo starts from the problem
 ("buttons are hard for my hands", "I sit all day") and ranks garments by whether they solve it,
 then uses **YouCam AI Clothes Virtual Try-On** to show the piece on the shopper's own photo.
 
@@ -50,8 +50,8 @@ Core logic lives in `lib/`: `agent.js` (AI stylist), `groq.js` (AI client), `mat
 | Start try-on | `POST /s2s/v2.0/task/cloth-v4` with `garment_category` `upper_body`, `lower_body`, `outer`, `shoes` or `full_body`. Later steps pass the previous result as `src_file_url`. `change_shoes: false` keeps the person's own shoes. |
 | Get result | `GET /s2s/v2.0/task/cloth-v4/{task_id}` |
 
-Tested on a photo of a person seated in a wheelchair: tops, trousers, shoes and a two-piece chained
-outfit all work, with the face, hands and chair left unchanged.
+Tested on seated and standing photos, including a person in a wheelchair: tops, trousers, shoes and a
+two-piece chained outfit all work, with the face, hands and any mobility aid left unchanged.
 
 ## Run it
 
@@ -67,11 +67,16 @@ Without an API key the app runs in **demo mode**: everything works, but the "try
 photo, so you can build the UI without spending API units. Without a Groq key, the AI stylist is
 hidden and quick style still works.
 
-### Garment images
+### Catalog
 
-Put product photos in `public/garments/` using the file names in `data/catalog.json`. Use front-facing
-shots of a single garment. Trousers work best as photos of the garment being worn. Items without a
-photo still appear in results, but their try-on button is disabled.
+`data/catalog.json` lists real products from adaptive brands (IZ Adaptive, Silverts, BILLY Footwear).
+Each **Buy** button opens that exact product on the brand's own store. Photos in `public/garments/` are
+the brand's product shots of the garment alone (no model). Prices are shown in each store's currency
+(IZ Adaptive: CAD, BILLY: USD), so outfit totals are approximate. Product photos belong to their brands
+and are used here only to show and link to their products; see `CREDITS.md`.
+
+To add a product, use a front-facing photo of the garment alone. Items without a photo still appear,
+but their try-on button is disabled. The logic tests use a separate sample catalog in `test/fixtures/`.
 
 ## Tests
 

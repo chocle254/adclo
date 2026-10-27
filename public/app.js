@@ -104,7 +104,12 @@ const ERRORS = {
   network_error: "We couldn't reach the try-on service. Check your connection and try again.",
 };
 const explain = (code) => ERRORS[code] || 'Something went wrong. Please try again.';
-const money = (n) => `$${n}`;
+// Prices come from each store in its own currency (IZ Adaptive: CAD, BILLY: USD).
+const SYMBOL = { CAD: 'CA$', USD: 'US$' };
+const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
+const money = (n, currency) => `${SYMBOL[currency] ?? '$'}${fmt(n)}`;
+// Totals can mix currencies, so they are shown as an approximate figure.
+const approx = (n) => `about $${Math.round(n)}`;
 const catLabel = (id) => state.meta.categories.find((c) => c.id === id)?.label ?? '';
 const firstCategory = () => state.meta.categories.find((c) => state.items.some((i) => i.category === c.id))?.id ?? 'upper_body';
 const catOne = (id) => state.meta.categories.find((c) => c.id === id)?.one ?? 'piece';
@@ -187,7 +192,7 @@ function productCard(item, { reason } = {}) {
       el('div', { class: 'card-body' },
         el('span', { class: 'card-type' }, item.type),
         el('h3', {}, item.name),
-        el('span', { class: 'price' }, money(item.price)),
+        el('span', { class: 'price' }, money(item.price, item.currency)),
         reason ? el('span', { class: 'why' }, reason) : null)));
 }
 
@@ -214,7 +219,7 @@ function viewHome() {
     el('section', { class: 'hero' },
       el('div', {},
         el('h1', {}, 'Clothes that work the way you do.'),
-        el('p', {}, 'Adaptive fashion ranked for your body and your day. See every piece on you, seated or standing, before you buy.'),
+        el('p', {}, 'Adaptive clothing from real brands, ranked for the way you get dressed: limited grip, one hand, a carer helping, sensory needs, a brace or a medical device. Try any piece on your own photo before you buy.'),
         el('div', { class: 'hero-actions' },
           el('a', { class: 'btn primary', href: '#/style' }, icon('spark'), 'Style me'),
           el('a', { class: 'btn ghost', href: `#/shop/${firstCategory()}` }, 'Browse the shop'))),
@@ -290,16 +295,16 @@ async function viewProduct(id) {
       el('div', { class: 'pdp-media' }, el('img', { src: `/garments/${item.image}`, alt: `${item.name} in ${item.color.name}` })),
       el('div', { class: 'pdp-info' },
         el('div', {},
-          el('span', { class: 'card-type' }, item.type),
+          el('span', { class: 'card-type' }, item.brand ? `${item.type} · ${item.brand}` : item.type),
           el('h1', {}, item.name),
           el('p', { class: 'muted' }, el('span', { class: 'swatch', style: `background:${item.color.hex}` }), ` ${item.color.name[0].toUpperCase()}${item.color.name.slice(1)}`)),
-        el('div', { class: 'pdp-price' }, money(item.price), fitPill(item),
+        el('div', { class: 'pdp-price' }, money(item.price, item.currency), fitPill(item),
           item.fit != null ? el('span', { class: 'muted small' }, `meets ${item.needsMet} of ${item.needsTotal} of your needs`) : null),
         el('div', {}, el('div', { class: 'label-row' }, 'Size', mySize ? el('span', {}, `Your usual: ${mySize}`) : el('span', {}, 'Pick your size')), sizes),
         el('div', { class: 'pdp-actions' },
           tryBtn,
           lookButton(item, { size: () => size }),
-          el('a', { class: 'btn ghost', href: item.buyUrl, target: '_blank', rel: 'noopener' }, 'Buy from store')),
+          el('a', { class: 'btn ghost', href: item.buyUrl, target: '_blank', rel: 'noopener' }, `Buy from ${item.brand?.split(' ×')[0] || 'store'}`)),
         el('section', { class: 'panel' }, el('h2', {}, state.profile.needs.length ? 'Why it works for you' : 'Adaptive features'), whyList),
         el('p', { class: 'muted' }, item.description))),
     suggestions.length ? el('section', { class: 'section' },
@@ -311,8 +316,8 @@ async function viewProduct(id) {
 }
 
 const EXAMPLES = [
-  "My cousin's wedding is Saturday. I dress with one hand and I'm in my chair all day. Nothing bright, about $200.",
-  'Just a warm jacket for work, something in navy or brown.',
+  "My cousin's wedding is Saturday. I dress with one hand. Nothing bright, about $200.",
+  'My mum helps me get dressed. Something comfy for every day that goes on without lifting my arms.',
   'Comfy weekend clothes. Tags drive me crazy and I love green.',
 ];
 
@@ -325,7 +330,7 @@ function viewStyle() {
   // --- Ask the AI stylist (type or speak) ---
   const box = el('textarea', {
     id: 'ask', name: 'ask', rows: 3, maxLength: 600,
-    placeholder: 'For example: a job interview next week, I use a wheelchair and buttons are hard. Under $250.',
+    placeholder: 'For example: a job interview next week, buttons are hard for my hands. Under $250.',
   });
   box.value = store.load('ask', '');
   const voiceStatus = el('p', { class: 'muted small voice-status', role: 'status' });
@@ -458,7 +463,7 @@ function renderStyled(look, target) {
     el('p', {}, plan.summary || ''),
     el('div', { class: 'tags' },
       el('span', { class: 'tag' }, look.occasion),
-      plan.budget ? el('span', { class: 'tag' }, `Up to ${money(plan.budget)}`) : null,
+      plan.budget ? el('span', { class: 'tag' }, `Up to $${plan.budget}`) : null,
       needLabels.map((n) => el('span', { class: 'tag' }, n)),
       plan.colorsLike.map((c) => el('span', { class: 'tag' }, `Likes ${c}`)),
       plan.colorsAvoid.map((c) => el('span', { class: 'tag' }, `No ${c}`)))) : null;
@@ -474,10 +479,10 @@ function renderStyled(look, target) {
       el('div', {},
         el('span', { class: 'card-type' }, catOne(i.category)),
         el('a', { class: 'name', href: `#/p/${i.id}` }, el('h3', {}, i.name)),
-        el('span', { class: 'price' }, money(i.price)),
+        el('span', { class: 'price' }, money(i.price, i.currency)),
         el('ul', {}, (i.aiWhy ? [i.aiWhy] : i.why).map((w) => el('li', {}, w))))))),
     el('div', { class: 'total-bar' },
-      el('div', {}, el('span', { class: 'muted' }, items.length > 1 ? 'Full outfit ' : 'Price '), el('strong', {}, money(look.total))),
+      el('div', {}, el('span', { class: 'muted' }, items.length > 1 ? 'Full outfit ' : 'Price '), el('strong', {}, items.length > 1 ? approx(look.total) : money(items[0].price, items[0].currency))),
       el('div', { class: 'hero-actions' },
         el('button', { type: 'button', class: 'btn ghost', on: { click: () => {
           for (const i of items) {
@@ -513,14 +518,14 @@ function viewLook() {
       el('div', {},
         el('span', { class: 'card-type' }, catOne(i.category)),
         el('a', { class: 'name', href: `#/p/${i.id}` }, el('h3', {}, i.name)),
-        el('span', { class: 'price' }, money(i.price)),
+        el('span', { class: 'price' }, money(i.price, i.currency)),
         el('span', { class: 'muted small' }, i.chosenSize ? ` · Size ${i.chosenSize}` : ' · Pick a size'),
         i.reasons[0] ? el('ul', {}, el('li', {}, i.reasons[0])) : null),
       el('div', { class: 'row-actions' },
         el('a', { class: 'btn primary sm', href: i.buyUrl, target: '_blank', rel: 'noopener', 'aria-label': `Buy ${i.name}` }, 'Buy'),
         el('button', { type: 'button', class: 'btn ghost sm', on: { click: () => { state.look.delete(i.category); saveLook(); viewLook(); } }, 'aria-label': `Remove ${i.name}` }, 'Remove'))))),
     el('div', { class: 'total-bar' },
-      el('div', {}, el('span', { class: 'muted' }, 'Total '), el('strong', {}, money(total))),
+      el('div', {}, el('span', { class: 'muted' }, 'Total '), el('strong', {}, approx(total))),
       el('button', { type: 'button', class: 'btn primary', on: { click: () => openTryOn(items) } }, icon('camera'), items.length > 1 ? 'Try the full look on me' : 'Try it on me')),
     missing.length ? el('p', { class: 'muted section' }, 'Add ',
       missing.map((c, n) => [n ? (n === missing.length - 1 ? ' or ' : ', ') : '', el('a', { href: `#/shop/${c}` }, catOne(c))]),
@@ -659,9 +664,9 @@ function openTryOn(garments) {
   const total = garments.reduce((s, g) => s + g.price, 0);
   mount($('#tryon-items'), 
     ...garments.map((g) => el('li', {},
-      el('span', {}, el('strong', {}, g.name), ` · ${money(g.price)}`, el('span', { class: 'why' }, g.reasons?.[0] || g.featureText?.[0] || '')),
+      el('span', {}, el('strong', {}, g.name), ` · ${money(g.price, g.currency)}`, el('span', { class: 'why' }, g.reasons?.[0] || g.featureText?.[0] || '')),
       el('a', { class: 'btn primary sm', href: g.buyUrl, target: '_blank', rel: 'noopener', 'aria-label': `Buy ${g.name}` }, 'Buy'))),
-    garments.length > 1 ? el('li', {}, el('span', { class: 'total' }, 'Full look'), el('span', { class: 'total' }, money(total))) : null);
+    garments.length > 1 ? el('li', {}, el('span', { class: 'total' }, 'Full look'), el('span', { class: 'total' }, approx(total))) : null);
   mount($('#tryon-steps'), );
   $('#tryon-photo').hidden = true;
   $('#retry').hidden = true;
@@ -670,7 +675,7 @@ function openTryOn(garments) {
   if (!state.photo) {
     $('#before').removeAttribute('src');
     mount($('#after-wrap'), );
-    setStatus('Add a photo of you first. Sitting in your chair is perfect.');
+    setStatus('Add a photo of you first. Sitting or standing, whatever is comfortable.');
     $('#tryon-photo').hidden = false;
     return;
   }
