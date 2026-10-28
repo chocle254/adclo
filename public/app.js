@@ -923,6 +923,7 @@ function showError(code, keepImage = false) {
 }
 
 $('#retry').addEventListener('click', runTryOn);
+$('#profile-btn').addEventListener('click', openProfile);
 $('#tryon-photo').addEventListener('click', () => { tryDlg.close(); openProfile(); });
 tryDlg.addEventListener('close', () => { state.tryonRun = (state.tryonRun || 0) + 1; });
 for (const b of document.querySelectorAll('[data-close]')) {

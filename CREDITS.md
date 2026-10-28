@@ -35,3 +35,14 @@ From [Pexels](https://www.pexels.com), used under the [Pexels License](https://w
 "Marcus" and "Grace" are demo personas played by Pexels stock photos, used under the [Pexels License](https://www.pexels.com/license/):
 Marcus is `seated-sample.jpg` above; Grace is https://www.pexels.com/photo/woman-sitting-on-a-chair-7561054/ (Vlada Karpovich).
 Voice-over by Groq Orpheus (voice "troy"). Store pages shown are the brands' own product pages.
+
+## Background music (`demo/adclo-demo.mp4`)
+
+Original composition for AdClo, synthesized from scratch in code (sine waves and noise, no samples or
+loops). Released under [CC0](https://creativecommons.org/publicdomain/zero/1.0/). The script that
+generates it is `demo/adclo-score.py`.
+
+## Screenshots (`public/demo/screen-*.jpg`, `grace-before-after.jpg`)
+
+Captured from AdClo itself. They show the brand product photos listed above and the Pexels demo photos
+listed under "Demo video".
