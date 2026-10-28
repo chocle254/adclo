@@ -167,8 +167,7 @@ plain language.
 - Product photos in `public/garments/` belong to their brands. They are used only to show each product
   and link to its page on the brand's own store. No product is sold through AdClo, and AdClo takes no
   commission. Each photo's source page is listed in [`CREDITS.md`](CREDITS.md).
-- We have written to IZ Adaptive and BILLY Footwear to ask permission to show their product photos.
-  Any brand can ask for its images to be removed, and we will remove them straight away.
+- Any brand can ask for its images to be removed, and we will remove them straight away.
 - People shown in the demo ("Marcus" and "Grace") are Pexels stock photos used under the Pexels License.
   The background music in the demo video is an original composition, synthesized in code and released CC0.
 
