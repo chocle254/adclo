@@ -7,7 +7,7 @@ a medical device or sitting all day). It ranks real adaptive clothes from IZ Ada
 BILLY Footwear for you, shows them on **your own photo** with YouCam virtual try-on, and an AI stylist
 you can talk to builds whole outfits and talks back. Every Buy link opens that exact product.
 
-**Live app:** https://adclo.vercel.app · **Demo video:** [`demo/adclo-demo.mp4`](demo/adclo-demo.mp4)
+**Live app:** https://adclo.vercel.app · **Demo video (3 min, two shoppers end to end):** [`demo/adclo-demo.mp4`](demo/adclo-demo.mp4)
 
 | Your photo | Tried on with YouCam (IZ Adaptive open-back polo) |
 |---|---|
@@ -49,6 +49,8 @@ access), who you shop for, your usual sizes and a photo of you.
 
 The prompts require person-first language, and a filter replaces phrases like "wheelchair-bound"
 in anything the AI writes. Voice input uses Groq's `whisper-large-v3-turbo`.
+
+**The try-on never invents a body.** Generative try-on fills in two full legs when it draws trousers, so on a photo of an amputee it adds a leg that isn't there. For shoppers who tick the limb-difference need, AdClo skips trousers and dresses in the try-on and says why; tops, jackets and shoes still try on, and the fit ranking still covers every piece.
 
 **The stylist talks back.** Alongside the written answer, the AI writes a short, casual spoken reply,
 the way a friend would talk you through the outfit, not a read-out of the page. It's spoken with Groq's
