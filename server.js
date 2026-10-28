@@ -185,6 +185,23 @@ app.post('/api/tryon/step', async (req, res) => {
   }
 });
 
+// Serves a YouCam result image from our own origin, so the page can read its pixels
+// (YouCam's storage doesn't send CORS headers). Only YouCam's result storage is allowed.
+const RESULT_HOST = /^yce[\w-]*\.s3[\w.-]*\.amazonaws\.com$/;
+app.get('/api/tryon/image', async (req, res) => {
+  let url;
+  try { url = new URL(String(req.query.url || '')); } catch { return res.status(400).json({ error: 'bad_url' }); }
+  if (url.protocol !== 'https:' || !RESULT_HOST.test(url.hostname)) return res.status(400).json({ error: 'bad_url' });
+  try {
+    const r = await fetch(url);
+    const type = r.headers.get('content-type') || '';
+    if (!r.ok || !type.startsWith('image/')) return res.status(502).json({ error: 'image_unavailable' });
+    res.set({ 'content-type': type, 'cache-control': 'private, max-age=3600' }).send(Buffer.from(await r.arrayBuffer()));
+  } catch {
+    res.status(502).json({ error: 'image_unavailable' });
+  }
+});
+
 app.get('/api/tryon/:taskId', async (req, res) => {
   try {
     res.json(await client.getTryOn(req.params.taskId));

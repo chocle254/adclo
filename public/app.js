@@ -794,30 +794,44 @@ function openTryOn(garments) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Dresses one piece at a time; each result becomes the photo for the next piece.
-// The try-on AI draws two full legs, so for a limb difference it would show a body that isn't theirs.
-// For those shoppers we skip trousers and dresses and say why; tops, jackets and shoes are safe.
+// The try-on AI draws trousers and dresses on two full legs, so for a limb difference it invents a leg.
+// For those shoppers we keep trousers and dresses only inside the outline of their real body
+// (see keep-body.js), and put shoes on first, while the photo still shows their own legs
+// (on a photo with new trousers the AI tends to draw a pair). If fitting can't run on this
+// device, we skip trousers and dresses and say why.
 const LEG_CATEGORIES = ['lower_body', 'full_body'];
-const skipsLegs = () => state.profile.needs.includes('limb');
-const legNote = (items) => `We didn't draw the ${items.map((g) => g.type.toLowerCase()).join(' or ')} on your photo. The try-on AI adds a second leg that isn't there, and you deserve to see yourself as you are. The fit notes still apply.`;
+const needsRealBody = () => state.profile.needs.includes('limb');
+const keepBody = () => import('./keep-body.js');
+const viaUs = (url) => (url.startsWith('https://') ? `/api/tryon/image?url=${encodeURIComponent(url)}` : url);
+const legNote = (items) => `We didn't draw the ${items.map((g) => g.type.toLowerCase()).join(' or ')} on your photo. On this device we couldn't stop the try-on AI from adding a leg that isn't there. The fit notes still apply.`;
 
 async function runTryOn() {
   const all = state.tryon;
-  const skipped = skipsLegs() ? all.filter((g) => LEG_CATEGORIES.includes(g.category)) : [];
-  const garments = all.filter((g) => !skipped.includes(g));
   const run = (state.tryonRun = (state.tryonRun || 0) + 1);
   const alive = () => state.tryonRun === run && state.tryon === all && tryDlg.open;
+  const photo = state.photo;
   $('#retry').hidden = true;
+
+  // For a limb difference, make sure we can fit trousers to their real body before we start.
+  let fit = null;
+  let skipped = [];
+  if (needsRealBody()) {
+    try { fit = await keepBody(); fit.warmUp(photo); } catch { skipped = all.filter((g) => LEG_CATEGORIES.includes(g.category)); }
+  }
+  const garments = all.filter((g) => !skipped.includes(g));
+  if (!alive()) return;
   if (!garments.length) {
     mount($('#after-wrap'), el('img', { src: `/garments/${skipped[0].image}`, alt: skipped[0].name, class: 'flat' }));
     return setStatus(legNote(skipped));
   }
+
   mount($('#after-wrap'), el('div', { class: 'spinner', 'aria-hidden': 'true' }));
   setStatus(garments.length > 1
     ? `Dressing you one piece at a time. About ${20 * garments.length} seconds.`
     : 'Dressing you. This takes about 20 seconds.');
 
   const names = Object.fromEntries(garments.map((g) => [g.id, g.name]));
-  const label = { pending: 'waiting', running: 'dressing…', done: 'done', error: 'failed' };
+  const label = { pending: 'waiting', running: 'dressing…', done: 'done', error: 'failed', skipped: 'left off' };
   let steps = [];
   const paintSteps = () => {
     $('#tryon-steps').hidden = steps.length < 2;
@@ -828,17 +842,22 @@ async function runTryOn() {
     }));
   };
 
-  let lastUrl = null;
+  // `src` is what the next piece is drawn onto; `shown` is the picture on screen.
+  let src = null;
+  let shown = photo;
+  let fitted = [];
   try {
-    const { fileId, order } = await api('/api/tryon/start', { photo: state.photo, garmentIds: garments.map((g) => g.id) });
-    steps = order.map((id) => ({ id, state: 'pending' }));
+    const { fileId, order } = await api('/api/tryon/start', { photo, garmentIds: garments.map((g) => g.id) });
+    src = { srcFileId: fileId };
+    const first = (id) => (fit && garments.find((g) => g.id === id)?.category === 'shoes' ? 0 : 1);
+    steps = [...order].sort((a, b) => first(a) - first(b)).map((id) => ({ id, state: 'pending' }));
     paintSteps();
 
     for (const step of steps) {
       if (!alive()) return;
       step.state = 'running';
       paintSteps();
-      const { taskId } = await api('/api/tryon/step', lastUrl ? { garmentId: step.id, srcUrl: lastUrl } : { garmentId: step.id, srcFileId: fileId });
+      const { taskId } = await api('/api/tryon/step', { garmentId: step.id, ...src });
       const started = Date.now();
       let result;
       for (;;) {
@@ -851,18 +870,49 @@ async function runTryOn() {
       if (result.state !== 'done') {
         step.state = 'error';
         paintSteps();
-        return showError(result.code, Boolean(lastUrl));
+        return showError(result.code, shown !== photo);
+      }
+
+      const garment = garments.find((g) => g.id === step.id);
+      if (fit && LEG_CATEGORIES.includes(garment.category)) {
+        // Keep the new piece only where their body really is, then send that picture on.
+        setStatus(`Fitting the ${garment.type.toLowerCase()} to your body as it is…`);
+        let kept = null;
+        try { kept = await fit.keepRealBody({ photoUrl: photo, baseUrl: viaUs(shown), resultUrl: viaUs(result.url) }); } catch { /* fall back below */ }
+        if (!alive()) return;
+        if (!kept) {
+          // Never risk showing an invented limb: leave this piece off and carry on with the rest.
+          skipped.push(garment);
+          step.state = 'skipped';
+          paintSteps();
+          continue;
+        }
+        shown = kept;
+        fitted.push(garment);
+        const more = steps.some((s) => s.state === 'pending');
+        if (more) src = { srcFileId: (await api('/api/tryon/start', { photo: shown, garmentIds: [garment.id] })).fileId };
+      } else {
+        shown = result.url;
+        src = { srcUrl: result.url };
       }
       step.state = 'done';
-      lastUrl = result.url;
       paintSteps();
       const done = steps.filter((s) => s.state === 'done').map((s) => names[s.id]);
-      mount($('#after-wrap'), el('img', { src: lastUrl, alt: `You wearing the ${done.join(' and ')}` }));
+      mount($('#after-wrap'), el('img', { src: shown, alt: `You wearing the ${done.join(' and ')}` }));
+      if (steps.some((s) => s.state === 'pending')) setStatus('Next piece…');
+    }
+    if (shown === photo) {
+      mount($('#after-wrap'), el('img', { src: `/garments/${skipped[0].image}`, alt: skipped[0].name, class: 'flat' }));
+      return setStatus(legNote(skipped));
     }
     const doneText = garments.length > 1 ? 'Here is your full look.' : 'Here you are. Tap Buy if it works for you.';
-    setStatus(skipped.length ? `${doneText} ${legNote(skipped)}` : doneText);
+    const notes = [
+      fitted.length ? `We fitted the ${fitted.map((g) => g.type.toLowerCase()).join(' and ')} to your body as it is, so the try-on doesn't add a leg that isn't there.` : '',
+      skipped.length ? legNote(skipped) : '',
+    ].filter(Boolean).join(' ');
+    setStatus(notes ? `${doneText} ${notes}` : doneText);
   } catch (ex) {
-    if (alive()) showError(ex.code, Boolean(lastUrl));
+    if (alive()) showError(ex.code, shown !== photo);
   }
 }
 
