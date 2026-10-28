@@ -245,6 +245,7 @@ dialog.sheet[open] { animation: rise 0.22s ease; }
 .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
 .compare figure { margin: 0; }
 .compare img, .after { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 16px; background: var(--surface-2); }
+.compare img.flat { object-fit: contain; padding: 12px; box-sizing: border-box; }
 .after { display: grid; place-items: center; overflow: hidden; }
 .after img { animation: fade 0.5s ease; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }

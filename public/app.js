@@ -794,11 +794,23 @@ function openTryOn(garments) {
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Dresses one piece at a time; each result becomes the photo for the next piece.
+// The try-on AI draws two full legs, so for a limb difference it would show a body that isn't theirs.
+// For those shoppers we skip trousers and dresses and say why; tops, jackets and shoes are safe.
+const LEG_CATEGORIES = ['lower_body', 'full_body'];
+const skipsLegs = () => state.profile.needs.includes('limb');
+const legNote = (items) => `We didn't draw the ${items.map((g) => g.type.toLowerCase()).join(' or ')} on your photo. The try-on AI adds a second leg that isn't there, and you deserve to see yourself as you are. The fit notes still apply.`;
+
 async function runTryOn() {
-  const garments = state.tryon;
+  const all = state.tryon;
+  const skipped = skipsLegs() ? all.filter((g) => LEG_CATEGORIES.includes(g.category)) : [];
+  const garments = all.filter((g) => !skipped.includes(g));
   const run = (state.tryonRun = (state.tryonRun || 0) + 1);
-  const alive = () => state.tryonRun === run && state.tryon === garments && tryDlg.open;
+  const alive = () => state.tryonRun === run && state.tryon === all && tryDlg.open;
   $('#retry').hidden = true;
+  if (!garments.length) {
+    mount($('#after-wrap'), el('img', { src: `/garments/${skipped[0].image}`, alt: skipped[0].name, class: 'flat' }));
+    return setStatus(legNote(skipped));
+  }
   mount($('#after-wrap'), el('div', { class: 'spinner', 'aria-hidden': 'true' }));
   setStatus(garments.length > 1
     ? `Dressing you one piece at a time. About ${20 * garments.length} seconds.`
@@ -847,7 +859,8 @@ async function runTryOn() {
       const done = steps.filter((s) => s.state === 'done').map((s) => names[s.id]);
       mount($('#after-wrap'), el('img', { src: lastUrl, alt: `You wearing the ${done.join(' and ')}` }));
     }
-    setStatus(garments.length > 1 ? 'Here is your full look.' : 'Here you are. Tap Buy if it works for you.');
+    const doneText = garments.length > 1 ? 'Here is your full look.' : 'Here you are. Tap Buy if it works for you.';
+    setStatus(skipped.length ? `${doneText} ${legNote(skipped)}` : doneText);
   } catch (ex) {
     if (alive()) showError(ex.code, Boolean(lastUrl));
   }
